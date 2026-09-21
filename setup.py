@@ -1,31 +1,34 @@
 import os
 from setuptools import setup
 
-# Utility function to read the README file.
-# Used for the long_description.  It's nice, because now 1) we have a top level
-# README file and 2) it's easier to type in the README file than to put a raw
-# string in below ...
+
 def read(fname):
-	return open(os.path.join(os.path.dirname(__file__), fname)).read()
+	path = os.path.join(os.path.dirname(__file__), fname)
+	return open(path).read() if os.path.exists(path) else ""
+
 
 setup(
 	name = "monitoring-plugins-crm",
-	version = "1.0.2",
-	author = "Mathieu Grzybek",
-	author_email = "mathieu@grzybek.fr",
-	description = "This script checks the state of resources and nodes.",
+	version = "2.0.0",
+	author = "Mathieu Grzybek, Hosted Power",
+	author_email = "support@hosted-power.com",
+	description = "Pacemaker/Corosync cluster health check (crm_mon XML): quorum, nodes, resources and promotable-clone master count.",
 	license = "GPLv3",
-	keywords = "monitoring check crm cluster",
-	url = "https://github.com/mgrzybek/monitoring-plugins-crm",
-	download_url = "https://github.com/mgrzybek/monitoring-plugins-crm/archive/1.0.2.tar.gz",
+	keywords = "monitoring check crm cluster pacemaker corosync nagios icinga",
+	url = "https://github.com/HOSTED-POWER/monitoring-plugins-crm",
 	packages = ['monitoring_plugins_crm'],
-	data_files = [('/usr/lib/nagios/plugins',['bin/check_cluster'])],
-	install_requires = ['pynagios'],
-	long_description = read('README.rst'),
+	data_files = [('/usr/lib/nagios/plugins', ['bin/check_cluster'])],
+	# No third-party dependencies: standard library only (argparse, xml.etree,
+	# subprocess). The upstream pynagios dependency was removed.
+	install_requires = [],
+	python_requires = ">=3.6",
+	long_description = read('README.md'),
+	long_description_content_type = "text/markdown",
 	classifiers = [
 		"Development Status :: 5 - Production/Stable",
 		"Topic :: Utilities",
 		"Environment :: Console",
+		"Programming Language :: Python :: 3",
 		"License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"
 	]
 )

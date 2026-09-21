@@ -1,0 +1,60 @@
+<pacemaker-result api-version="2.38" request="crm_mon --output-as=xml">
+  <summary>
+    <stack type="corosync" pacemakerd-state="running"/>
+    <current_dc present="true" version="3.0.0-3.0.0" name="search3.weba.be" id="3" with_quorum="true" mixed_version="false"/>
+    <last_update time="Mon Sep 21 21:00:13 2026" origin="search1.weba.be"/>
+    <last_change time="Sun Sep 13 10:10:21 2026" user="root" client="root" origin="search1.weba.be"/>
+    <nodes_configured number="3"/>
+    <resources_configured number="4" disabled="0" blocked="0"/>
+    <cluster_options stonith-enabled="true" symmetric-cluster="true" no-quorum-policy="fence" maintenance-mode="false" stop-all-resources="false" stonith-timeout-ms="60000" priority-fencing-delay-ms="0"/>
+  </summary>
+  <nodes>
+    <node name="search1.weba.be" id="1" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" health="green" feature_set="3.20.0" shutdown="false" expected_up="true" is_dc="false" resources_running="2" type="member"/>
+    <node name="search2.weba.be" id="2" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" health="green" feature_set="3.20.0" shutdown="false" expected_up="true" is_dc="false" resources_running="1" type="member"/>
+    <node name="search3.weba.be" id="3" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" health="green" feature_set="3.20.0" shutdown="false" expected_up="true" is_dc="true" resources_running="1" type="member"/>
+  </nodes>
+  <resources>
+    <resource id="turbostack-elasticsearch-vip" resource_agent="ocf:heartbeat:IPaddr2" role="Started" active="true" orphaned="false" blocked="false" maintenance="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+      <node name="search1.weba.be" id="1" cached="true"/>
+    </resource>
+    <clone id="turbostack-elasticsearch-clone" multi_state="false" unique="false" maintenance="false" managed="true" disabled="false" failed="false" failure_ignored="false">
+      <resource id="turbostack-elasticsearch" resource_agent="systemd:elasticsearch" role="Started" active="true" orphaned="false" blocked="false" maintenance="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="search2.weba.be" id="2" cached="true"/>
+      </resource>
+      <resource id="turbostack-elasticsearch" resource_agent="systemd:elasticsearch" role="Started" active="true" orphaned="false" blocked="false" maintenance="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="search3.weba.be" id="3" cached="true"/>
+      </resource>
+      <resource id="turbostack-elasticsearch" resource_agent="systemd:elasticsearch" role="Started" active="true" orphaned="false" blocked="false" maintenance="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="search1.weba.be" id="1" cached="true"/>
+      </resource>
+    </clone>
+  </resources>
+  <node_history>
+    <node name="search2.weba.be">
+      <resource_history id="turbostack-elasticsearch" orphan="false" migration-threshold="1">
+        <operation_history call="11" task="start" rc="0" rc_text="OK" last-rc-change="Thu Sep 17 18:31:03 2026" exec-time="22755ms" queue-time="0ms"/>
+        <operation_history call="12" task="monitor" rc="0" rc_text="OK" interval="10000ms" last-rc-change="Thu Sep 17 18:31:15 2026" exec-time="4ms" queue-time="0ms"/>
+      </resource_history>
+    </node>
+    <node name="search3.weba.be">
+      <resource_history id="turbostack-elasticsearch" orphan="false" migration-threshold="1">
+        <operation_history call="11" task="start" rc="0" rc_text="OK" last-rc-change="Thu Sep 17 18:31:15 2026" exec-time="35000ms" queue-time="0ms"/>
+        <operation_history call="12" task="monitor" rc="0" rc_text="OK" interval="10000ms" last-rc-change="Thu Sep 17 18:31:15 2026" exec-time="2ms" queue-time="0ms"/>
+      </resource_history>
+    </node>
+    <node name="search1.weba.be">
+      <resource_history id="turbostack-elasticsearch" orphan="false" migration-threshold="1">
+        <operation_history call="13" task="start" rc="0" rc_text="OK" last-rc-change="Thu Sep 17 18:31:03 2026" exec-time="22522ms" queue-time="0ms"/>
+        <operation_history call="14" task="monitor" rc="0" rc_text="OK" interval="10000ms" last-rc-change="Thu Sep 17 18:31:15 2026" exec-time="5ms" queue-time="0ms"/>
+      </resource_history>
+      <resource_history id="turbostack-elasticsearch-vip" orphan="false" migration-threshold="1000000">
+        <operation_history call="11" task="start" rc="0" rc_text="OK" last-rc-change="Thu Sep 17 18:30:40 2026" exec-time="81ms" queue-time="0ms"/>
+        <operation_history call="12" task="monitor" rc="0" rc_text="OK" interval="10000ms" last-rc-change="Thu Sep 17 18:30:40 2026" exec-time="50ms" queue-time="0ms"/>
+      </resource_history>
+    </node>
+  </node_history>
+  <bans>
+    <ban id="turbostack-elasticsearch-vip-avoid-search3.weba.be" resource="turbostack-elasticsearch-vip" node="search3.weba.be" weight="-1000000" promoted-only="false" master_only="false"/>
+  </bans>
+  <status code="0" message="OK"/>
+</pacemaker-result>

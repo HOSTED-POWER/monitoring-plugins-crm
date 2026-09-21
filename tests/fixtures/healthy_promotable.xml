@@ -1,0 +1,106 @@
+<pacemaker-result api-version="2.38" request="crm_mon --output-as=xml">
+  <summary>
+    <stack type="corosync" pacemakerd-state="running"/>
+    <current_dc present="true" version="3.0.0-3.0.0" name="web1.weba.be" id="1" with_quorum="true" mixed_version="false"/>
+    <last_update time="Mon Sep 21 21:00:11 2026" origin="web1.weba.be"/>
+    <last_change time="Sun Sep 20 21:44:44 2026" user="root" client="root" origin="web1.weba.be"/>
+    <nodes_configured number="2"/>
+    <resources_configured number="9" disabled="0" blocked="0"/>
+    <cluster_options stonith-enabled="true" symmetric-cluster="true" no-quorum-policy="fence" maintenance-mode="false" stop-all-resources="false" stonith-timeout-ms="60000" priority-fencing-delay-ms="0"/>
+  </summary>
+  <nodes>
+    <node name="web1.weba.be" id="1" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" health="green" feature_set="3.20.0" shutdown="false" expected_up="true" is_dc="true" resources_running="6" type="member"/>
+    <node name="web2.weba.be" id="2" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" health="green" feature_set="3.20.0" shutdown="false" expected_up="true" is_dc="false" resources_running="3" type="member"/>
+  </nodes>
+  <resources>
+    <resource id="turbostack-mysql-vip" resource_agent="ocf:heartbeat:IPaddr2" role="Started" active="true" orphaned="false" blocked="false" maintenance="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+      <node name="web1.weba.be" id="1" cached="true"/>
+    </resource>
+    <resource id="turbostack-redis-cache-vip" resource_agent="ocf:heartbeat:IPaddr2" role="Started" active="true" orphaned="false" blocked="false" maintenance="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+      <node name="web1.weba.be" id="1" cached="true"/>
+    </resource>
+    <resource id="turbostack-redis-persistent-vip" resource_agent="ocf:heartbeat:IPaddr2" role="Started" active="true" orphaned="false" blocked="false" maintenance="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+      <node name="web1.weba.be" id="1" cached="true"/>
+    </resource>
+    <clone id="turbostack-mysql-clone" multi_state="false" unique="false" maintenance="false" managed="true" disabled="false" failed="false" failure_ignored="false">
+      <resource id="turbostack-mysql" resource_agent="systemd:mysql" role="Started" active="true" orphaned="false" blocked="false" maintenance="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="web2.weba.be" id="2" cached="true"/>
+      </resource>
+      <resource id="turbostack-mysql" resource_agent="systemd:mysql" role="Started" active="true" orphaned="false" blocked="false" maintenance="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="web1.weba.be" id="1" cached="true"/>
+      </resource>
+    </clone>
+    <clone id="turbostack-redis-cache-clone" multi_state="true" unique="false" maintenance="false" managed="true" disabled="false" failed="false" failure_ignored="false">
+      <resource id="turbostack-redis-cache" resource_agent="ocf:turbostack:redis" role="Unpromoted" active="true" orphaned="false" blocked="false" maintenance="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="web2.weba.be" id="2" cached="true"/>
+      </resource>
+      <resource id="turbostack-redis-cache" resource_agent="ocf:turbostack:redis" role="Promoted" active="true" orphaned="false" blocked="false" maintenance="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="web1.weba.be" id="1" cached="true"/>
+      </resource>
+    </clone>
+    <clone id="turbostack-redis-persistent-clone" multi_state="true" unique="false" maintenance="false" managed="true" disabled="false" failed="false" failure_ignored="false">
+      <resource id="turbostack-redis-persistent" resource_agent="ocf:turbostack:redis" role="Unpromoted" active="true" orphaned="false" blocked="false" maintenance="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="web2.weba.be" id="2" cached="true"/>
+      </resource>
+      <resource id="turbostack-redis-persistent" resource_agent="ocf:turbostack:redis" role="Promoted" active="true" orphaned="false" blocked="false" maintenance="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="web1.weba.be" id="1" cached="true"/>
+      </resource>
+    </clone>
+  </resources>
+  <node_attributes>
+    <node name="web1.weba.be">
+      <attribute name="master-turbostack-redis-cache" value="1"/>
+      <attribute name="master-turbostack-redis-persistent" value="1"/>
+    </node>
+    <node name="web2.weba.be">
+      <attribute name="master-turbostack-redis-cache" value="1"/>
+      <attribute name="master-turbostack-redis-persistent" value="1"/>
+    </node>
+  </node_attributes>
+  <node_history>
+    <node name="web2.weba.be">
+      <resource_history id="turbostack-mysql" orphan="false" migration-threshold="1000000">
+        <operation_history call="24" task="start" rc="0" rc_text="OK" last-rc-change="Sun Sep 20 21:45:39 2026" exec-time="2677ms" queue-time="0ms"/>
+        <operation_history call="34" task="monitor" rc="0" rc_text="OK" interval="10000ms" last-rc-change="Sun Sep 20 21:45:42 2026" exec-time="1ms" queue-time="0ms"/>
+      </resource_history>
+      <resource_history id="turbostack-redis-cache" orphan="false" migration-threshold="1000000">
+        <operation_history call="31" task="start" rc="0" rc_text="OK" last-rc-change="Sun Sep 20 21:45:36 2026" exec-time="6228ms" queue-time="0ms"/>
+        <operation_history call="35" task="monitor" rc="0" rc_text="OK" interval="11000ms" last-rc-change="Sun Sep 20 21:45:42 2026" exec-time="56ms" queue-time="0ms"/>
+      </resource_history>
+      <resource_history id="turbostack-redis-persistent" orphan="false" migration-threshold="1000000">
+        <operation_history call="30" task="start" rc="0" rc_text="OK" last-rc-change="Sun Sep 20 21:45:36 2026" exec-time="6190ms" queue-time="0ms"/>
+        <operation_history call="36" task="monitor" rc="0" rc_text="OK" interval="11000ms" last-rc-change="Sun Sep 20 21:45:42 2026" exec-time="56ms" queue-time="0ms"/>
+      </resource_history>
+    </node>
+    <node name="web1.weba.be">
+      <resource_history id="turbostack-redis-persistent" orphan="false" migration-threshold="1000000">
+        <operation_history call="52" task="promote" rc="0" rc_text="OK" last-rc-change="Sun Sep 20 21:44:44 2026" exec-time="117ms" queue-time="0ms"/>
+        <operation_history call="56" task="monitor" rc="8" rc_text="Promoted" interval="10000ms" last-rc-change="Sun Sep 20 21:44:45 2026" exec-time="73ms" queue-time="0ms"/>
+      </resource_history>
+      <resource_history id="turbostack-redis-persistent-vip" orphan="false" migration-threshold="1000000">
+        <operation_history call="58" task="start" rc="0" rc_text="OK" last-rc-change="Sun Sep 20 21:44:45 2026" exec-time="50ms" queue-time="0ms"/>
+        <operation_history call="60" task="monitor" rc="0" rc_text="OK" interval="10000ms" last-rc-change="Sun Sep 20 21:44:46 2026" exec-time="27ms" queue-time="0ms"/>
+      </resource_history>
+      <resource_history id="turbostack-mysql" orphan="false" migration-threshold="1000000">
+        <operation_history call="27" task="start" rc="0" rc_text="OK" last-rc-change="Sun Sep 20 21:43:05 2026" exec-time="2928ms" queue-time="0ms"/>
+        <operation_history call="34" task="monitor" rc="0" rc_text="OK" interval="10000ms" last-rc-change="Sun Sep 20 21:43:09 2026" exec-time="1ms" queue-time="0ms"/>
+      </resource_history>
+      <resource_history id="turbostack-mysql-vip" orphan="false" migration-threshold="1000000">
+        <operation_history call="41" task="start" rc="0" rc_text="OK" last-rc-change="Sun Sep 20 21:44:31 2026" exec-time="43ms" queue-time="0ms"/>
+        <operation_history call="42" task="monitor" rc="0" rc_text="OK" interval="10000ms" last-rc-change="Sun Sep 20 21:44:31 2026" exec-time="26ms" queue-time="0ms"/>
+      </resource_history>
+      <resource_history id="turbostack-redis-cache-vip" orphan="false" migration-threshold="1000000">
+        <operation_history call="57" task="start" rc="0" rc_text="OK" last-rc-change="Sun Sep 20 21:44:45 2026" exec-time="50ms" queue-time="0ms"/>
+        <operation_history call="59" task="monitor" rc="0" rc_text="OK" interval="10000ms" last-rc-change="Sun Sep 20 21:44:46 2026" exec-time="28ms" queue-time="0ms"/>
+      </resource_history>
+      <resource_history id="turbostack-redis-cache" orphan="false" migration-threshold="1000000">
+        <operation_history call="51" task="promote" rc="0" rc_text="OK" last-rc-change="Sun Sep 20 21:44:44 2026" exec-time="118ms" queue-time="0ms"/>
+        <operation_history call="55" task="monitor" rc="8" rc_text="Promoted" interval="10000ms" last-rc-change="Sun Sep 20 21:44:45 2026" exec-time="79ms" queue-time="0ms"/>
+      </resource_history>
+    </node>
+  </node_history>
+  <fence_history>
+    <fence_event action="reboot" target="web1.weba.be" client="pacemaker-controld.2417" origin="web2.weba.be" status="success" delegate="web2.weba.be" completed="2026-09-17 18:30:22.383879 +02:00"/>
+  </fence_history>
+  <status code="0" message="OK"/>
+</pacemaker-result>

@@ -1,32 +1,74 @@
 # monitoring-plugins-crm
-Python Nagios-compatible cluster check.
 
-## Description
+Python Nagios/Icinga-compatible **Pacemaker / Corosync** cluster health check.
 
-This nagios-compatible check aims to replace `crm_mon -s` and `check_cluster` provided in `monitoring-plugins-cluster`. It gives a better monitoring than the existing ones.
+Forked from [mgrzybek/monitoring-plugins-crm](https://github.com/mgrzybek/monitoring-plugins-crm)
+and rewritten to:
 
-This script checks the state of resources and nodes. An alert is emitted if
-some nodes are offline or if some resources are in the 'failed' state.
+* use the stable `crm_mon --output-as=xml` interface (falls back to the legacy
+  `--as-xml`), so it is robust across Pacemaker 2.0 / 2.1 / 3.x
+  (Debian 11 / 12 / 13) where the plain-text `crm_mon` output changes between
+  releases;
+* drop the unmaintained `pynagios` dependency — **standard library only**;
+* add two checks the original (and the common text-parsing plugins) lack:
+  **corosync quorum** and the **promoted-instance count of promotable clones**.
+
+## What it checks
+
+| Area | CRITICAL | WARNING |
+|------|----------|---------|
+| Cluster | pacemakerd not running, no DC, **no quorum** | whole-cluster maintenance-mode |
+| Nodes | offline, unclean | standby, maintenance, pending, clean shutdown |
+| Resources | failed, blocked | orphaned, unmanaged |
+| Promotable clones (`multi_state="true"`) | promoted count ≠ expected (default 1) | — |
+
+The promotable-clone check is the key one for active/passive resources such as
+redis, mysql or elasticsearch managed by Pacemaker: it alerts when a clone has
+no master (0 promoted) or a split (>1), which a per-node service check cannot see.
 
 ## Usage
-This plugin can be run using an unprivileged user but requires a sudo configuration, such as:
+
+Runs as an unprivileged monitoring user via `sudo`. Sudoers:
 
 ```
-User_Alias NAGIOS = nagios
-Cmd_Alias NAGIOS_CMD = /usr/sbin/crm_mon --as-xml
-NAGIOS ALL = (root) NOPASSWD: NOEXEC: NAGIOS_CMD
+User_Alias  NAGIOS = nagios
+Cmnd_Alias  NAGIOS_CRM = /usr/sbin/crm_mon --output-as=xml, /usr/sbin/crm_mon --as-xml
+NAGIOS ALL = (root) NOPASSWD: NOEXEC: NAGIOS_CRM
 ```
 
-Checks the state of nodes: ```/usr/lib/nagios/plugins/check_cluster --nodes=yes --resources=no --perfdata=yes```
+```
+# full check (default: nodes + resources + quorum + promotables + perfdata)
+/usr/lib/nagios/plugins/check_cluster
 
-Checks the state of ressources: ```/usr/lib/nagios/plugins/check_cluster --nodes=no --resources=yes --perfdata=yes```
+# scope it
+/usr/lib/nagios/plugins/check_cluster --nodes=yes --resources=yes --quorum=yes --promotables=yes
 
-Checks the state of both nodes and ressources: ```/usr/lib/nagios/plugins/check_cluster --nodes=yes --resources=yes --perfdata=yes```
+# a clone that should have 2 masters
+/usr/lib/nagios/plugins/check_cluster --promoted-expected=2
+```
 
-The 'warning' and 'critical' thresholds deal with the number of failed resources.
+Options: `--nodes`, `--resources`, `--quorum`, `--promotables` (each `yes`/`no`,
+default `yes`), `--promoted-expected N` (default `1`), `--perfdata` (`yes`/`no`,
+default `yes`), `--help`.
 
-Perfdata provide two metrics: 'offline_nodes' and 'failed_resources'.
+Perfdata: `nodes_online`, `nodes_offline`, `resources_ok`, `resources_failed`,
+`resources_blocked`, `promotables_ok`.
 
-## Help
+Example output:
 
-```/usr/lib/nagios/plugins/check_cluster --help```
+```
+CLUSTER OK - nodes 2 up/0 down; resources 9 ok/0 failed/0 blocked; promotables 2 ok | nodes_offline=0 nodes_online=2 promotables_ok=2 resources_blocked=0 resources_failed=0 resources_ok=9
+CLUSTER CRITICAL - promotable turbostack-redis-cache-clone has 0 promoted (expected 1) || nodes 2 up/0 down; ... 
+```
+
+Exit codes: `0` OK, `1` WARNING, `2` CRITICAL, `3` UNKNOWN.
+
+## Deployment
+
+The plugin is a single self-contained file. Either `pip install .` (installs
+`bin/check_cluster` + the package), or simply drop
+`monitoring_plugins_crm/crm_check.py` in place as the plugin:
+
+```
+install -m 0755 monitoring_plugins_crm/crm_check.py /usr/lib/nagios/plugins/check_cluster
+```
