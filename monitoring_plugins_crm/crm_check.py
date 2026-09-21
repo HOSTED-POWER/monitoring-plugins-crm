@@ -26,7 +26,6 @@
 # promoted-count checks. Licensed GPLv3+.
 
 import argparse
-import os
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -40,13 +39,17 @@ PROMOTED_ROLES = ("Promoted", "Master")
 
 
 def run_crm_mon():
-    """Return (xml_bytes, error_string). Uses sudo -n when not root. Prefers the
-    current --output-as=xml flag and falls back to the legacy --as-xml."""
-    prefix = [] if os.getuid() == 0 else ["sudo", "-n"]
+    """Return (xml_bytes, error_string).
+
+    Calls crm_mon directly. The monitoring user must be allowed to read the
+    cluster state - add it to the ``haclient`` group (preferred) or wrap the
+    plugin in sudo at the check-command level. The plugin does not escalate
+    privileges itself. Prefers the current --output-as=xml flag and falls back
+    to the legacy --as-xml, so it works across Pacemaker 2.0/2.1/3.x."""
     errors = []
     for flag in ("--output-as=xml", "--as-xml"):
         try:
-            proc = subprocess.run(prefix + [CRM_MON, flag],
+            proc = subprocess.run([CRM_MON, flag],
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except FileNotFoundError:
             return None, "%s not found" % CRM_MON

@@ -26,15 +26,32 @@ The promotable-clone check is the key one for active/passive resources such as
 redis, mysql or elasticsearch managed by Pacemaker: it alerts when a clone has
 no master (0 promoted) or a split (>1), which a per-node service check cannot see.
 
-## Usage
+## Running as the monitoring user
 
-Runs as an unprivileged monitoring user via `sudo`. Sudoers:
+The plugin calls `crm_mon` directly and does not escalate privileges itself
+(following normal Nagios/Icinga plugin convention). There are two ways to let
+the unprivileged monitoring user (e.g. `nagios`) read the cluster state:
+
+**Preferred — add the monitoring user to the `haclient` group** (no sudo; this
+is the group Pacemaker grants CIB read access to):
+
+```
+usermod -aG haclient nagios
+# restart the monitoring agent so it picks up the new group
+systemctl restart icinga2
+```
+
+**Fallback — sudo at the check-command level** (if you cannot change the user's
+groups): grant sudo and invoke the plugin via `sudo`, e.g.
+`sudo /usr/lib/nagios/plugins/check_cluster`, with:
 
 ```
 User_Alias  NAGIOS = nagios
-Cmnd_Alias  NAGIOS_CRM = /usr/sbin/crm_mon --output-as=xml, /usr/sbin/crm_mon --as-xml
-NAGIOS ALL = (root) NOPASSWD: NOEXEC: NAGIOS_CRM
+Cmnd_Alias  NAGIOS_CRM = /usr/lib/nagios/plugins/check_cluster
+NAGIOS ALL = (root) NOPASSWD: NAGIOS_CRM
 ```
+
+## Usage
 
 ```
 # full check (default: nodes + resources + quorum + promotables + perfdata)
