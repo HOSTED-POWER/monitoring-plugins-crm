@@ -19,8 +19,7 @@
 #
 # Exit codes: 0 OK, 1 WARNING, 2 CRITICAL, 3 UNKNOWN.
 #
-# Runs crm_mon unprivileged and uses one narrowly authorized sudo command for
-# qdevice status only; see README.md.
+# Runs as an unprivileged user without self-escalation; see README.md.
 #
 # Origin: forked from mgrzybek/monitoring-plugins-crm (GPLv3). Rewritten to use
 # the stable XML interface across Pacemaker 2.0/2.1/3.x (Debian 11/12/13), to
@@ -39,7 +38,6 @@ STATE_NAME = {OK: "OK", WARNING: "WARNING", CRITICAL: "CRITICAL", UNKNOWN: "UNKN
 CRM_MON = "/usr/sbin/crm_mon"
 COROSYNC_CONF = "/etc/corosync/corosync.conf"
 QDEVICE_TOOL = "/usr/sbin/corosync-qdevice-tool"
-SUDO = "/usr/bin/sudo"
 # Pacemaker >= 2.1 reports "Promoted"/"Unpromoted"; 2.0 reported "Master"/"Slave".
 PROMOTED_ROLES = ("Promoted", "Master")
 
@@ -90,10 +88,10 @@ def run_qdevice_tool():
     """Return (status_text, error_string) for the configured qdevice."""
     try:
         proc = subprocess.run(
-            [SUDO, "-n", QDEVICE_TOOL, "-s"], stdout=subprocess.PIPE,
+            [QDEVICE_TOOL, "-s"], stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, text=True)
     except FileNotFoundError:
-        return None, "%s not found" % SUDO
+        return None, "%s not found" % QDEVICE_TOOL
     if proc.returncode != 0:
         detail = (proc.stderr or proc.stdout or "no output").strip()
         return None, "%s rc=%d %s" % (QDEVICE_TOOL, proc.returncode, detail)

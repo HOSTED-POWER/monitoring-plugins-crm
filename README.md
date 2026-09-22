@@ -40,18 +40,17 @@ usermod -aG haclient nagios
 systemctl restart icinga2
 ```
 
-When a qdevice is configured, its local control socket remains root-only. The
-qdevice tool supports both status and control operations, so the plugin uses
-non-interactive sudo for the exact read-only status command. Grant only this
-command and argument:
+When a qdevice is configured, grant `haclient` access to its local socket using
+qdevice's supported advanced settings:
 
 ```
-nagios ALL=(root) NOPASSWD: /usr/sbin/corosync-qdevice-tool -s
+corosync-qdevice -S local_socket_umask=0007,local_socket_gid=haclient
 ```
 
-Sudo's argument matching prevents the plugin user from running the tool's
-shutdown action or other command variants. Clusters without a `device {`
-declaration in `corosync.conf` do not invoke sudo or the qdevice tool.
+The containing runtime directory must be traversable. TurboStack sets it to
+mode `0755`; the socket itself is created as `root:haclient 0770`. Clusters
+without a `device {` declaration in `corosync.conf` do not invoke the qdevice
+tool.
 
 ## Usage
 
