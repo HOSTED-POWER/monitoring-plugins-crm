@@ -30,13 +30,9 @@ no master (0 promoted) or a split (>1), which a per-node service check cannot se
 
 ## Running as the monitoring user
 
-The plugin calls `crm_mon` and `corosync-qdevice-tool` directly and does not
-escalate privileges itself
-(following normal Nagios/Icinga plugin convention). There are two ways to let
-the unprivileged monitoring user (e.g. `nagios`) read the cluster state:
-
-**Preferred — add the monitoring user to the `haclient` group** (no sudo; this
-is the group Pacemaker grants CIB read access to):
+The plugin calls `crm_mon` directly as the unprivileged monitoring user. Add
+that user (e.g. `nagios`) to the `haclient` group, which Pacemaker uses for CIB
+read access:
 
 ```
 usermod -aG haclient nagios
@@ -44,21 +40,18 @@ usermod -aG haclient nagios
 systemctl restart icinga2
 ```
 
-When a qdevice is configured, the monitoring user must also be able to traverse
-`/run/corosync-qdevice`. The daemon's status socket is read-only from the
-plugin's perspective; mode `0755` on that runtime directory is sufficient and
-does not grant control over Corosync or Pacemaker. Clusters without a
-`device {` declaration in `corosync.conf` do not invoke the qdevice tool.
-
-**Fallback — sudo at the check-command level** (if you cannot change the user's
-groups): grant sudo and invoke the plugin via `sudo`, e.g.
-`sudo /usr/lib/nagios/plugins/check_cluster`, with:
+When a qdevice is configured, its local control socket remains root-only. The
+qdevice tool supports both status and control operations, so the plugin uses
+non-interactive sudo for the exact read-only status command. Grant only this
+command and argument:
 
 ```
-User_Alias  NAGIOS = nagios
-Cmnd_Alias  NAGIOS_CRM = /usr/lib/nagios/plugins/check_cluster
-NAGIOS ALL = (root) NOPASSWD: NAGIOS_CRM
+nagios ALL=(root) NOPASSWD: /usr/sbin/corosync-qdevice-tool -s
 ```
+
+Sudo's argument matching prevents the plugin user from running the tool's
+shutdown action or other command variants. Clusters without a `device {`
+declaration in `corosync.conf` do not invoke sudo or the qdevice tool.
 
 ## Usage
 

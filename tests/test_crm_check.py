@@ -21,8 +21,15 @@ OK, WARNING, CRITICAL, UNKNOWN = 0, 1, 2, 3
 FIX = os.path.join(HERE, "fixtures")
 PROMOTABLE = open(os.path.join(FIX, "healthy_promotable.xml"), "rb").read()
 PLAIN = open(os.path.join(FIX, "healthy_plain_clone.xml"), "rb").read()
+REAL_QDEVICE_RUNNER = crm_check.run_qdevice_tool
 
 results = []
+
+
+class CommandResult:
+    returncode = 0
+    stdout = "State:\t\t\tConnected\n"
+    stderr = ""
 
 
 def run(name, xml_bytes, argv, expect_state, expect_substr=None,
@@ -52,6 +59,25 @@ run("disconnected qdevice", PROMOTABLE, [], CRITICAL,
 run("unavailable qdevice status", PROMOTABLE, [], CRITICAL,
     "cannot read qdevice status", qdevice_configured=True,
     qdevice_error="permission denied")
+
+# The qdevice tool also supports a shutdown action. Verify that the plugin can
+# request only the exact read-only command permitted by TurboStack sudoers.
+qdevice_command = []
+original_subprocess_run = crm_check.subprocess.run
+crm_check.subprocess.run = lambda argv, **kwargs: (
+    qdevice_command.extend(argv) or CommandResult())
+status, error = REAL_QDEVICE_RUNNER()
+crm_check.subprocess.run = original_subprocess_run
+exact_qdevice_command = [
+    crm_check.SUDO, "-n", crm_check.QDEVICE_TOOL, "-s"]
+qdevice_command_ok = (
+    qdevice_command == exact_qdevice_command
+    and status == CommandResult.stdout
+    and error is None)
+results.append(qdevice_command_ok)
+print("[%s] %-34s -> %s" % (
+    "PASS" if qdevice_command_ok else "FAIL", "exact qdevice status command",
+    " ".join(qdevice_command)))
 run("no quorum",
     PROMOTABLE.replace(b'with_quorum="true"', b'with_quorum="false"'),
     [], CRITICAL, "quorum")
