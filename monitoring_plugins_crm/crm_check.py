@@ -143,6 +143,7 @@ def check(argv=None):
     cluster_maint = False
     qdevice_is_configured = False
     qdevice_connected = False
+    qdevice_endpoint = None
     if summary is not None:
         stack = summary.find("stack")
         if stack is not None and stack.get("pacemakerd-state", "running") != "running":
@@ -171,7 +172,12 @@ def check(argv=None):
                 else:
                     state_match = re.search(
                         r"(?m)^State:\s*(\S+)\s*$", qdevice_status or "")
+                    endpoint_match = re.search(
+                        r"(?m)^QNetd (?:host|address):\s*(\S+)\s*$",
+                        qdevice_status or "")
                     qdevice_state = state_match.group(1) if state_match else "unknown"
+                    qdevice_endpoint = (endpoint_match.group(1)
+                                        if endpoint_match else None)
                     qdevice_connected = qdevice_state == "Connected"
                     if not qdevice_connected:
                         crits.append("qdevice state=%s" % qdevice_state)
@@ -259,8 +265,9 @@ def check(argv=None):
     if args.promotables == "yes":
         counts.append("promotables %d ok" % promotable_ok)
     if args.quorum == "yes" and qdevice_is_configured:
-        counts.append("qdevice %s" % (
-            "connected" if qdevice_connected else "disconnected"))
+        connection = "OK" if qdevice_connected else "FAILED"
+        endpoint = " (%s)" % qdevice_endpoint if qdevice_endpoint else ""
+        counts.append("arbiter connection %s%s" % (connection, endpoint))
 
     state = CRITICAL if crits else (WARNING if warns else OK)
     return _emit(state, crits, warns, perf, args, counts)

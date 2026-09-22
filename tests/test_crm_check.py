@@ -28,7 +28,8 @@ results = []
 
 class CommandResult:
     returncode = 0
-    stdout = "State:\t\t\tConnected\n"
+    stdout = ("QNetd host:\t\tarbiter1.weba.be:5403\n"
+              "State:\t\t\tConnected\n")
     stderr = ""
 
 
@@ -50,12 +51,15 @@ def run(name, xml_bytes, argv, expect_state, expect_substr=None,
 
 run("healthy promotable", PROMOTABLE, [], OK, "promotables 2 ok")
 run("healthy plain clone", PLAIN, [], OK, "promotables 0 ok")
-run("healthy qdevice", PROMOTABLE, [], OK, "qdevice connected",
+run("healthy qdevice", PROMOTABLE, [], OK,
+    "arbiter connection OK (arbiter1.weba.be:5403)",
     qdevice_configured=True,
-    qdevice_output="State:\t\t\tConnected\n")
+    qdevice_output=("QNetd host:\t\tarbiter1.weba.be:5403\n"
+                    "State:\t\t\tConnected\n"))
 run("disconnected qdevice", PROMOTABLE, [], CRITICAL,
     "qdevice state=Disconnected", qdevice_configured=True,
-    qdevice_output="State:\t\t\tDisconnected\n")
+    qdevice_output=("QNetd address:\t\t10.100.30.4:5403\n"
+                    "State:\t\t\tDisconnected\n"))
 run("unavailable qdevice status", PROMOTABLE, [], CRITICAL,
     "cannot read qdevice status", qdevice_configured=True,
     qdevice_error="permission denied")

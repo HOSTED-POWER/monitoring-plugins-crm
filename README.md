@@ -40,15 +40,17 @@ usermod -aG haclient nagios
 systemctl restart icinga2
 ```
 
-When a qdevice is configured, grant `haclient` access to its local socket using
-qdevice's supported advanced settings:
+When a qdevice is configured, grant `haclient` access to its local socket with
+these native systemd service settings:
 
 ```
-corosync-qdevice -S local_socket_umask=0007,local_socket_gid=haclient
+Group=haclient
+UMask=0007
+RuntimeDirectoryMode=0770
 ```
 
-The containing runtime directory must be traversable. TurboStack sets it to
-mode `0755`; the socket itself is created as `root:haclient 0770`. Clusters
+These settings belong in a `corosync-qdevice.service` systemd drop-in. The
+runtime directory and socket are then created as `root:haclient 0770`. Clusters
 without a `device {` declaration in `corosync.conf` do not invoke the qdevice
 tool.
 
@@ -76,7 +78,7 @@ is configured.
 Example output:
 
 ```
-CLUSTER OK - nodes 2 up/0 down; resources 9 ok/0 failed/0 blocked; promotables 2 ok; qdevice connected | nodes_offline=0 nodes_online=2 promotables_ok=2 qdevice_connected=1 resources_blocked=0 resources_failed=0 resources_ok=9
+CLUSTER OK - nodes 2 up/0 down; resources 9 ok/0 failed/0 blocked; promotables 2 ok; arbiter connection OK (arbiter1.weba.be:5403) | nodes_offline=0 nodes_online=2 promotables_ok=2 qdevice_connected=1 resources_blocked=0 resources_failed=0 resources_ok=9
 CLUSTER CRITICAL - promotable turbostack-redis-cache-clone has 0 promoted (expected 1) || nodes 2 up/0 down; ... 
 ```
 
