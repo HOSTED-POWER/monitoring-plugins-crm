@@ -48,10 +48,10 @@ def run_crm_mon():
     """Return (xml_bytes, error_string).
 
     Calls crm_mon directly. The monitoring user must be allowed to read the
-    cluster state - add it to the ``haclient`` group (preferred) or wrap the
-    plugin in sudo at the check-command level. The plugin does not escalate
-    privileges itself. Prefers the current --output-as=xml flag and falls back
-    to the legacy --as-xml, so it works across Pacemaker 2.0/2.1/3.x."""
+    cluster state by adding it to the ``haclient`` group. This crm_mon call
+    does not escalate privileges. Prefers the current --output-as=xml flag and
+    falls back to the legacy --as-xml, so it works across Pacemaker
+    2.0/2.1/3.x."""
     errors = []
     for flag in ("--output-as=xml", "--as-xml"):
         try:
