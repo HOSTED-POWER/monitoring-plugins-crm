@@ -7,6 +7,7 @@
 # legacy `--as-xml` on old Pacemaker) and reports on:
 #
 #   * corosync quorum + DC election + pacemakerd state
+#   * configured qdevice connectivity (including a lost external voter)
 #   * node health   : offline / unclean       -> CRITICAL
 #                     standby / maintenance / pending / shutdown -> WARNING
 #   * resource health: failed / blocked       -> CRITICAL
@@ -18,7 +19,7 @@
 #
 # Exit codes: 0 OK, 1 WARNING, 2 CRITICAL, 3 UNKNOWN.
 #
-# Runs as an unprivileged user through sudo (NOEXEC); see README.md.
+# Runs as an unprivileged user without self-escalation; see README.md.
 #
 # Origin: forked from mgrzybek/monitoring-plugins-crm (GPLv3). Rewritten to use
 # the stable XML interface across Pacemaker 2.0/2.1/3.x (Debian 11/12/13), to
@@ -26,6 +27,7 @@
 # promoted-count checks. Licensed GPLv3+.
 
 import argparse
+import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -34,6 +36,8 @@ OK, WARNING, CRITICAL, UNKNOWN = 0, 1, 2, 3
 STATE_NAME = {OK: "OK", WARNING: "WARNING", CRITICAL: "CRITICAL", UNKNOWN: "UNKNOWN"}
 
 CRM_MON = "/usr/sbin/crm_mon"
+COROSYNC_CONF = "/etc/corosync/corosync.conf"
+QDEVICE_TOOL = "/usr/sbin/corosync-qdevice-tool"
 # Pacemaker >= 2.1 reports "Promoted"/"Unpromoted"; 2.0 reported "Master"/"Slave".
 PROMOTED_ROLES = ("Promoted", "Master")
 
@@ -62,6 +66,36 @@ def run_crm_mon():
             CRM_MON, flag, proc.returncode,
             (proc.stderr or b"").decode("utf-8", "replace").strip()))
     return None, "; ".join(errors)
+
+
+def qdevice_configured():
+    """Return (configured, error_string) from the local Corosync config."""
+    try:
+        with open(COROSYNC_CONF, "r", encoding="utf-8") as config_file:
+            config = config_file.read()
+    except FileNotFoundError:
+        return False, None
+    except OSError as error:
+        return None, "%s: %s" % (COROSYNC_CONF, error)
+
+    # `device {` is the Corosync quorum-device declaration. Node and logging
+    # blocks use different names, so anchoring it to a configuration line
+    # avoids matching comments or option values.
+    return bool(re.search(r"(?m)^\s*device\s*\{", config)), None
+
+
+def run_qdevice_tool():
+    """Return (status_text, error_string) for the configured qdevice."""
+    try:
+        proc = subprocess.run(
+            [QDEVICE_TOOL, "-s"], stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, text=True)
+    except FileNotFoundError:
+        return None, "%s not found" % QDEVICE_TOOL
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "no output").strip()
+        return None, "%s rc=%d %s" % (QDEVICE_TOOL, proc.returncode, detail)
+    return proc.stdout, None
 
 
 def iter_resources(element):
@@ -107,6 +141,8 @@ def check(argv=None):
 
     summary = root.find("summary")
     cluster_maint = False
+    qdevice_is_configured = False
+    qdevice_connected = False
     if summary is not None:
         stack = summary.find("stack")
         if stack is not None and stack.get("pacemakerd-state", "running") != "running":
@@ -123,6 +159,23 @@ def check(argv=None):
                 crits.append("no DC elected")
             elif dc.get("with_quorum") != "true":
                 crits.append("cluster does NOT have quorum")
+
+            qdevice_is_configured, qdevice_config_error = qdevice_configured()
+            if qdevice_config_error:
+                crits.append("cannot inspect qdevice configuration: %s"
+                             % qdevice_config_error)
+            elif qdevice_is_configured:
+                qdevice_status, qdevice_error = run_qdevice_tool()
+                if qdevice_error:
+                    crits.append("cannot read qdevice status: %s" % qdevice_error)
+                else:
+                    state_match = re.search(
+                        r"(?m)^State:\s*(\S+)\s*$", qdevice_status or "")
+                    qdevice_state = state_match.group(1) if state_match else "unknown"
+                    qdevice_connected = qdevice_state == "Connected"
+                    if not qdevice_connected:
+                        crits.append("qdevice state=%s" % qdevice_state)
+                perf["qdevice_connected"] = int(qdevice_connected)
 
     # ---- nodes ----
     n_online = n_offline = n_standby = n_maint = 0
@@ -205,6 +258,9 @@ def check(argv=None):
                       % (r_ok, r_failed, r_blocked))
     if args.promotables == "yes":
         counts.append("promotables %d ok" % promotable_ok)
+    if args.quorum == "yes" and qdevice_is_configured:
+        counts.append("qdevice %s" % (
+            "connected" if qdevice_connected else "disconnected"))
 
     state = CRITICAL if crits else (WARNING if warns else OK)
     return _emit(state, crits, warns, perf, args, counts)

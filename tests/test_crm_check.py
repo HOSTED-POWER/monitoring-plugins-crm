@@ -25,8 +25,11 @@ PLAIN = open(os.path.join(FIX, "healthy_plain_clone.xml"), "rb").read()
 results = []
 
 
-def run(name, xml_bytes, argv, expect_state, expect_substr=None):
+def run(name, xml_bytes, argv, expect_state, expect_substr=None,
+        qdevice_configured=False, qdevice_output=None, qdevice_error=None):
     crm_check.run_crm_mon = lambda: (xml_bytes, None)
+    crm_check.qdevice_configured = lambda: (qdevice_configured, None)
+    crm_check.run_qdevice_tool = lambda: (qdevice_output, qdevice_error)
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         state = crm_check.check(argv)
@@ -40,6 +43,15 @@ def run(name, xml_bytes, argv, expect_state, expect_substr=None):
 
 run("healthy promotable", PROMOTABLE, [], OK, "promotables 2 ok")
 run("healthy plain clone", PLAIN, [], OK, "promotables 0 ok")
+run("healthy qdevice", PROMOTABLE, [], OK, "qdevice connected",
+    qdevice_configured=True,
+    qdevice_output="State:\t\t\tConnected\n")
+run("disconnected qdevice", PROMOTABLE, [], CRITICAL,
+    "qdevice state=Disconnected", qdevice_configured=True,
+    qdevice_output="State:\t\t\tDisconnected\n")
+run("unavailable qdevice status", PROMOTABLE, [], CRITICAL,
+    "cannot read qdevice status", qdevice_configured=True,
+    qdevice_error="permission denied")
 run("no quorum",
     PROMOTABLE.replace(b'with_quorum="true"', b'with_quorum="false"'),
     [], CRITICAL, "quorum")
@@ -71,6 +83,7 @@ run("pacemakerd stopped",
 
 # crm_mon unavailable -> UNKNOWN
 crm_check.run_crm_mon = lambda: (None, "/usr/sbin/crm_mon not found")
+crm_check.qdevice_configured = lambda: (False, None)
 buf = io.StringIO()
 with contextlib.redirect_stdout(buf):
     st = crm_check.check([])

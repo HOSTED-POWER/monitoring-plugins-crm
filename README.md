@@ -10,14 +10,16 @@ and rewritten to:
   (Debian 11 / 12 / 13) where the plain-text `crm_mon` output changes between
   releases;
 * drop the unmaintained `pynagios` dependency — **standard library only**;
-* add two checks the original (and the common text-parsing plugins) lack:
-  **corosync quorum** and the **promoted-instance count of promotable clones**.
+* add checks the original (and the common text-parsing plugins) lack:
+  **corosync quorum**, a configured **qdevice connection**, and the
+  **promoted-instance count of promotable clones**.
 
 ## What it checks
 
 | Area | CRITICAL | WARNING |
 |------|----------|---------|
 | Cluster | pacemakerd not running, no DC, **no quorum** | whole-cluster maintenance-mode |
+| Qdevice | configured qdevice missing, unreadable or disconnected | — |
 | Nodes | offline, unclean | standby, maintenance, pending, clean shutdown |
 | Resources | failed, blocked | orphaned, unmanaged |
 | Promotable clones (`multi_state="true"`) | promoted count ≠ expected (default 1) | — |
@@ -28,7 +30,8 @@ no master (0 promoted) or a split (>1), which a per-node service check cannot se
 
 ## Running as the monitoring user
 
-The plugin calls `crm_mon` directly and does not escalate privileges itself
+The plugin calls `crm_mon` and `corosync-qdevice-tool` directly and does not
+escalate privileges itself
 (following normal Nagios/Icinga plugin convention). There are two ways to let
 the unprivileged monitoring user (e.g. `nagios`) read the cluster state:
 
@@ -40,6 +43,12 @@ usermod -aG haclient nagios
 # restart the monitoring agent so it picks up the new group
 systemctl restart icinga2
 ```
+
+When a qdevice is configured, the monitoring user must also be able to traverse
+`/run/corosync-qdevice`. The daemon's status socket is read-only from the
+plugin's perspective; mode `0755` on that runtime directory is sufficient and
+does not grant control over Corosync or Pacemaker. Clusters without a
+`device {` declaration in `corosync.conf` do not invoke the qdevice tool.
 
 **Fallback — sudo at the check-command level** (if you cannot change the user's
 groups): grant sudo and invoke the plugin via `sudo`, e.g.
@@ -54,7 +63,7 @@ NAGIOS ALL = (root) NOPASSWD: NAGIOS_CRM
 ## Usage
 
 ```
-# full check (default: nodes + resources + quorum + promotables + perfdata)
+# full check (default: nodes + resources + quorum/qdevice + promotables + perfdata)
 /usr/lib/nagios/plugins/check_cluster
 
 # scope it
@@ -69,12 +78,13 @@ default `yes`), `--promoted-expected N` (default `1`), `--perfdata` (`yes`/`no`,
 default `yes`), `--help`.
 
 Perfdata: `nodes_online`, `nodes_offline`, `resources_ok`, `resources_failed`,
-`resources_blocked`, `promotables_ok`.
+`resources_blocked`, `promotables_ok`, and `qdevice_connected` when a qdevice
+is configured.
 
 Example output:
 
 ```
-CLUSTER OK - nodes 2 up/0 down; resources 9 ok/0 failed/0 blocked; promotables 2 ok | nodes_offline=0 nodes_online=2 promotables_ok=2 resources_blocked=0 resources_failed=0 resources_ok=9
+CLUSTER OK - nodes 2 up/0 down; resources 9 ok/0 failed/0 blocked; promotables 2 ok; qdevice connected | nodes_offline=0 nodes_online=2 promotables_ok=2 qdevice_connected=1 resources_blocked=0 resources_failed=0 resources_ok=9
 CLUSTER CRITICAL - promotable turbostack-redis-cache-clone has 0 promoted (expected 1) || nodes 2 up/0 down; ... 
 ```
 

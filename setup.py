@@ -12,7 +12,7 @@ setup(
 	version = "2.0.0",
 	author = "Mathieu Grzybek, Hosted Power",
 	author_email = "support@hosted-power.com",
-	description = "Pacemaker/Corosync cluster health check (crm_mon XML): quorum, nodes, resources and promotable-clone master count.",
+	description = "Pacemaker/Corosync health check: quorum, qdevice, nodes, resources and promotable-clone master count.",
 	license = "GPLv3",
 	keywords = "monitoring check crm cluster pacemaker corosync nagios icinga",
 	url = "https://github.com/HOSTED-POWER/monitoring-plugins-crm",
